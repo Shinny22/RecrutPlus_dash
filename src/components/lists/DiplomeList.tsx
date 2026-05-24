@@ -1,161 +1,321 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { Loader2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Award, Hash, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
-
-// Tes composants
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableHead,
+  TableRow,
+} from "@/components/ui/table";
 import DiplomeForm from "../forms/DiplomeForm";
 import DiplomeView from "@/components/DiplomeView";
 import ConfirmDelete from "@/components/ConfirmDelete";
+import DataTableToolbar from "../DataTableToolbar";
+import PaginationControls from "../PaginationControls";
+import ModuleStatCards from "../ModuleStatCards";
+import { useDataTable } from "@/hooks/useDataTable";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
+import {
+  exportToExcel,
+  exportToPdf,
+  importFromExcel,
+  rowsForExport,
+  type ExportColumn,
+} from "@/lib/export";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export default function DiplomesPage() {
-  const router = useRouter();
+const API_URL = apiUrl(API_ENDPOINTS.diplomes);
 
-  // --- États (Logique V2 conservée) ---
-  const [diplomes, setDiplomes] = useState<any[]>([]);
+const COLUMNS: ExportColumn[] = [
+  { key: "id_diplome", label: "ID" },
+  { key: "designation", label: "Désignation" },
+  { key: "domaine_lib", label: "Domaine" },
+];
+
+interface DiplomeListProps {
+  onAdd: () => void;
+  onEdit: (id: number) => void;
+}
+
+export default function DiplomeList({ onAdd, onEdit }: DiplomeListProps) {
+  const [diplomes, setDiplomes] = useState<Record<string, unknown>[]>([]);
+  const [domaines, setDomaines] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<any>(null);
-  const [openForm, setOpenForm] = useState(false); // Changé pour matcher V1
+  const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
+  const [openForm, setOpenForm] = useState(false);
   const [openView, setOpenView] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [domaineFilter, setDomaineFilter] = useState("all");
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    id: number | null;
+  }>({ open: false, id: null });
 
-  // --- LOGIQUE API DRF ---
-  const fetchDiplomes = async () => {
+  const fetchDiplomes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/diplomes/");
-      const data = await res.json();
-      setDiplomes(data);
-    } catch (err) {
-      console.error(err);
-      alert("❌ Impossible de charger les diplômes.");
+      const [dipRes, domRes] = await Promise.all([
+        axios.get(API_URL),
+        axios.get(apiUrl(API_ENDPOINTS.domaines)),
+      ]);
+      const list = Array.isArray(dipRes.data) ? dipRes.data : dipRes.data.results ?? [];
+      setDiplomes(
+        list.map((d: Record<string, unknown>) => ({
+          ...d,
+          domaine_lib:
+            (d.domaine as { lib_dom?: string })?.lib_dom ??
+            (d.domaine as { libdom?: string })?.libdom ??
+            "N/A",
+        }))
+      );
+      setDomaines(
+        Array.isArray(domRes.data) ? domRes.data : domRes.data.results ?? []
+      );
+    } catch {
+      toast.error("Impossible de charger les diplômes.");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDiplomes();
-  }, [refreshKey]);
+  }, [fetchDiplomes]);
+
+  const filterFn = useCallback(
+    (item: Record<string, unknown>) => {
+      if (domaineFilter === "all") return true;
+      const domId =
+        typeof item.domaine === "object"
+          ? (item.domaine as { id_dom?: number })?.id_dom
+          : item.domaine;
+      return String(domId) === domaineFilter;
+    },
+    [domaineFilter]
+  );
+
+  const {
+    query,
+    setQuery,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    paginated,
+    filtered,
+    totalPages,
+    total,
+    filteredCount,
+  } = useDataTable(diplomes, {
+    pageSize: 10,
+    searchKeys: ["designation", "id_diplome", "domaine_lib"],
+    filterFn,
+  });
+
+  const moduleStats = useMemo(
+    () => [
+      { label: "Total", value: diplomes.length, icon: Award },
+      { label: "Filtrés", value: filteredCount, icon: List },
+      { label: "Domaines", value: domaines.length, icon: Hash },
+      { label: "Page", value: `${page}/${totalPages}`, icon: Hash },
+    ],
+    [diplomes, filteredCount, domaines, page, totalPages]
+  );
+
+  const exportData = () => rowsForExport(filtered, COLUMNS);
+
+  const handleExportExcel = async () => {
+    try {
+      await exportToExcel(exportData(), "diplomes", "Diplômes");
+    } catch {
+      toast.error("Échec de l'export Excel");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      await exportToPdf(exportData(), COLUMNS, "Liste des diplômes", "diplomes");
+    } catch {
+      toast.error("Échec de l'export PDF");
+    }
+  };
+
+  const handleImportExcel = async (file: File) => {
+    try {
+      const rows = await importFromExcel(file);
+      let ok = 0;
+      for (const row of rows) {
+        const designation = row.designation ?? row.Designation;
+        const domaine = row.domaine ?? row.domaineId ?? row.IdDom;
+        if (!designation || !domaine) continue;
+        await axios.post(API_URL, {
+          designation: String(designation),
+          domaine: Number(domaine),
+        });
+        ok++;
+      }
+      toast.success(`${ok} diplôme(s) importé(s)`);
+      fetchDiplomes();
+    } catch {
+      toast.error("Échec de l'import Excel");
+    }
+  };
 
   const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/diplomes/${id}/`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Erreur lors de la suppression");
-      setRefreshKey(prev => prev + 1);
-    } catch (err) {
-      console.error(err);
-      alert("❌ Échec : " + err);
+      await axios.delete(`${API_URL}${id}/`);
+      toast.success("Diplôme supprimé");
+      fetchDiplomes();
+    } catch {
+      toast.error("Échec de la suppression");
     }
   };
 
   return (
-    // Style de fond V1 : bg-[#F3F9F5]
-    <div className="p-6 space-y-4 bg-[#F3F9F5] min-h-screen">
-      
-      {/* Header Style V1 */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-[#0A5C36]">Liste des Diplômes</h1>
+    <div className="space-y-4">
+      <div className="flex justify-between items-start flex-wrap gap-2">
+        <div className="flex-1 min-w-0">
+          <DataTableToolbar
+            title="Liste des Diplômes"
+            searchPlaceholder="Rechercher un diplôme…"
+            query={query}
+            onQueryChange={setQuery}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            onImportExcel={handleImportExcel}
+            filteredCount={filteredCount}
+            totalCount={total}
+          >
+            <Select value={domaineFilter} onValueChange={setDomaineFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Domaine" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les domaines</SelectItem>
+                {domaines.map((d) => (
+                  <SelectItem key={String(d.id_dom)} value={String(d.id_dom)}>
+                    {String(d.lib_dom)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </DataTableToolbar>
+        </div>
         <Button
-          onClick={() => { setSelected(null); setOpenForm(true); }}
-          className="bg-[#0A5C36] text-white hover:bg-[#0C7041] rounded-xl shadow-sm"
+          onClick={onAdd}
+          className="bg-[#0A5C36] text-white hover:bg-[#0C7041] rounded-xl shadow-sm shrink-0"
         >
-          + Ajouter Diplôme
+          + Ajouter
         </Button>
       </div>
 
-      {/* Loader Style V1 */}
+      <ModuleStatCards items={moduleStats} loading={loading} />
+
       {loading ? (
         <div className="flex justify-center items-center p-8">
-          <Loader2 className="animate-spin w-6 h-6 mr-2 text-[#0A5C36]" />
-          <span className="text-gray-500">Chargement...</span>
+          <Loader2 className="animate-spin w-6 h-6 text-[#0A5C36]" />
         </div>
       ) : (
-        /* Table Style V1 */
-        <Table className="w-full border border-[#E6F4ED] rounded-xl shadow-sm overflow-hidden bg-white">
-          <TableHeader>
-            <TableRow className="bg-[#E7F5EF] hover:bg-[#E7F5EF]">
-              <TableHead className="w-16 text-[#0A5C36] font-semibold">ID</TableHead>
-              <TableHead className="text-[#0A5C36] font-semibold">Désignation</TableHead>
-              <TableHead className="text-[#0A5C36] font-semibold">Domaine</TableHead>
-              <TableHead className="text-right text-[#0A5C36] font-semibold">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {diplomes.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-4 text-gray-500">
-                  Aucun diplôme trouvé.
-                </TableCell>
+        <>
+          <Table className="w-full border border-[#E6F4ED] rounded-xl shadow-sm overflow-hidden bg-white">
+            <TableHeader>
+              <TableRow className="bg-[#E7F5EF]">
+                <TableHead className="text-[#0A5C36]">ID</TableHead>
+                <TableHead className="text-[#0A5C36]">Désignation</TableHead>
+                <TableHead className="text-[#0A5C36]">Domaine</TableHead>
+                <TableHead className="text-right text-[#0A5C36]">Actions</TableHead>
               </TableRow>
-            ) : (
-              diplomes.map((d) => (
-                <TableRow key={d.id_diplome} className="hover:bg-[#E9F7F0] transition-colors border-b border-[#F1F8F4] last:border-0">
-                  <TableCell className="text-[#0A5C36]">#{d.id_diplome}</TableCell>
-                  <TableCell className="text-[#0A5C36] font-medium">{d.designation}</TableCell>
-                  <TableCell className="text-[#0A5C36]">
-                    {d.domaine?.libdom || "N/A"}
+            </TableHeader>
+            <TableBody>
+              {paginated.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-4 text-gray-500">
+                    Aucun diplôme trouvé.
                   </TableCell>
+                </TableRow>
+              )}
+              {paginated.map((d) => (
+                <TableRow key={String(d.id_diplome)} className="hover:bg-[#E9F7F0]">
+                  <TableCell>#{String(d.id_diplome)}</TableCell>
+                  <TableCell className="font-medium">{String(d.designation)}</TableCell>
+                  <TableCell>{String(d.domaine_lib)}</TableCell>
                   <TableCell className="flex justify-end gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-[#0A5C36] border-[#0A5C36] hover:bg-[#E7F5EF]"
-                      onClick={() => { setSelected(d); setOpenView(true); }}
+                      onClick={() => {
+                        setSelected(d);
+                        setOpenView(true);
+                      }}
                     >
                       Voir
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-[#0A5C36] border-[#0A5C36] hover:bg-[#E7F5EF]"
-                      onClick={() => { setSelected(d); setOpenForm(true); }}
+                      onClick={() => onEdit(Number(d.id_diplome))}
                     >
                       Modifier
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
-                      className="hover:bg-red-100"
-                      onClick={() => setConfirmDelete({ open: true, id: d.id_diplome })}
+                      onClick={() =>
+                        setConfirmDelete({ open: true, id: Number(d.id_diplome) })
+                      }
                     >
-                      Supprimer
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+
+          {filteredCount > 0 && (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          )}
+        </>
       )}
 
-      {/* Formulaire Modal Style V1 */}
       {openForm && (
         <DiplomeForm
           diplome={selected}
-          onClose={() => { setOpenForm(false); setRefreshKey(prev => prev + 1); }}
+          onClose={() => {
+            setOpenForm(false);
+            fetchDiplomes();
+          }}
         />
       )}
 
-      {/* View Modal Style V1 */}
       {openView && selected && (
-        <DiplomeView
-          diplome={selected}
-          onClose={() => setOpenView(false)}
-        />
+        <DiplomeView diplome={selected} onClose={() => setOpenView(false)} />
       )}
 
-      {/* Confirm Delete Style V1 */}
       {confirmDelete.open && confirmDelete.id && (
         <ConfirmDelete
           open={confirmDelete.open}
           onClose={() => setConfirmDelete({ open: false, id: null })}
-          onConfirm={() => { handleDelete(confirmDelete.id!); setConfirmDelete({ open: false, id: null }); }}
-          title="Supprimer le Diplôme"
+          onConfirm={() => handleDelete(confirmDelete.id!)}
+          title="Supprimer le diplôme"
           message="Voulez-vous vraiment supprimer ce diplôme ?"
         />
       )}

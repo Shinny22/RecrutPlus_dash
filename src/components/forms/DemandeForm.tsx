@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from "@/components/ui/select";
 import { Loader2, FileUp, User, Briefcase, GraduationCap, CheckCircle2, X, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
 // Validation Yup pour éviter les erreurs 400 (Bad Request)
 const validationSchema = Yup.object().shape({
@@ -31,8 +32,8 @@ export default function DemandeForm({ demande, onClose = () => {}, onAdded }: an
     const fetchData = async () => {
       try {
         const [cp, cand] = await Promise.all([
-          fetch("http://127.0.0.1:8000/api/campagnes/").then(res => res.json()),
-          fetch("http://127.0.0.1:8000/api/candidats/").then(res => res.json())
+          fetch(apiUrl(API_ENDPOINTS.campagnes)).then((res) => res.json()),
+          fetch(apiUrl(API_ENDPOINTS.candidats)).then((res) => res.json()),
         ]);
         setCampagnes(cp);
         setCandidats(cand);
@@ -96,9 +97,9 @@ export default function DemandeForm({ demande, onClose = () => {}, onAdded }: an
               if (files.diplome) formData.append("diplome_fichier", files.diplome);
 
               const method = demande ? "PUT" : "POST";
-              const url = demande 
-                ? `http://127.0.0.1:8000/api/demandes/${demande.id_dde}/` 
-                : "http://127.0.0.1:8000/api/demandes/";
+              const url = demande
+                ? apiUrl(`${API_ENDPOINTS.demandes}${demande.id_dde}/`)
+                : apiUrl(API_ENDPOINTS.demandes);
 
               const res = await fetch(url, { method, body: formData });
               

@@ -1,10 +1,25 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
+import {
+  Briefcase,
+  Award,
+  Users,
+  FileText,
+  Megaphone,
+  TrendingUp,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table,
@@ -14,116 +29,244 @@ import {
   TableBody,
   TableCell,
 } from "@/components/ui/table";
-import { Calendar, Users as UsersIcon, Briefcase, Award, FileText, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import DataTableToolbar from "@/components/DataTableToolbar";
+import PaginationControls from "@/components/PaginationControls";
+import ModuleStatCards from "@/components/ModuleStatCards";
+import { useDataTable } from "@/hooks/useDataTable";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
+import {
+  exportToExcel,
+  exportToPdf,
+  rowsForExport,
+  type ExportColumn,
+} from "@/lib/export";
 
-export default function DashboardSymphos() {
-  const [query, setQuery] = useState("");
+type Stats = {
+  campagnes: number;
+  domaines: number;
+  diplomes: number;
+  candidats: number;
+  demandes: number;
+};
+
+type CandidatRow = {
+  id_candidat?: number;
+  id?: number;
+  nom_cand?: string;
+  pren_cand?: string;
+  nom_complet?: string;
+  email?: string;
+  genre?: string;
+};
+
+const CANDIDAT_COLUMNS: ExportColumn[] = [
+  { key: "id", label: "ID" },
+  { key: "nom_complet", label: "Nom complet" },
+  { key: "email", label: "Email" },
+  { key: "genre", label: "Genre" },
+];
+
+export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
-
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<Stats>({
     campagnes: 0,
     domaines: 0,
     diplomes: 0,
     candidats: 0,
     demandes: 0,
   });
-
-  const [candidates, setCandidates] = useState<any[]>([]);
+  const [candidates, setCandidates] = useState<CandidatRow[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const statsRes = await axios.get("http://127.0.0.1:8000/api/stats/");
-        setStats(statsRes.data.global);
-
-        const candRes = await axios.get("http://127.0.0.1:8000/candidats/");
-        setCandidates(candRes.data);
+        const [statsRes, candRes] = await Promise.all([
+          axios.get(apiUrl(API_ENDPOINTS.stats)),
+          axios.get(apiUrl(API_ENDPOINTS.candidats)),
+        ]);
+        setStats(statsRes.data.global ?? statsRes.data);
+        const raw = Array.isArray(candRes.data) ? candRes.data : candRes.data.results ?? [];
+        setCandidates(
+          raw.map((c: CandidatRow) => ({
+            ...c,
+            id: c.id_candidat ?? c.id,
+            nom_complet:
+              c.nom_complet ??
+              `${c.nom_cand ?? ""} ${c.pren_cand ?? ""}`.trim(),
+          }))
+        );
       } catch (err) {
         console.error("Erreur dashboard :", err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
-  const filteredCandidates = candidates
-    .filter((c) =>
-      c.nom_complet?.toLowerCase().includes(query.toLowerCase())
-    )
-    .slice(-5)
-    .reverse();
+  const {
+    query,
+    setQuery,
+    page,
+    setPage,
+    pageSize,
+    setPageSize,
+    paginated,
+    filtered,
+    totalPages,
+    total,
+    filteredCount,
+  } = useDataTable(candidates, {
+    pageSize: 10,
+    searchKeys: ["nom_complet", "email", "genre"],
+  });
+
+  const chartData = useMemo(
+    () => [
+      { label: "Domaines", value: stats.domaines },
+      { label: "Diplômes", value: stats.diplomes },
+      { label: "Candidats", value: stats.candidats },
+      { label: "Demandes", value: stats.demandes },
+      { label: "Campagnes", value: stats.campagnes },
+    ],
+    [stats]
+  );
+
+  const exportRows = rowsForExport(
+    filtered.map((c) => ({
+      id: c.id,
+      nom_complet: c.nom_complet,
+      email: c.email ?? "",
+      genre: c.genre ?? "",
+    })),
+    CANDIDAT_COLUMNS
+  );
+
+  const handleExportExcel = async () => {
+    try {
+      await exportToExcel(exportRows, "dashboard_candidats", "Candidats");
+    } catch {
+      console.error("Export Excel échoué");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      await exportToPdf(
+        exportRows,
+        CANDIDAT_COLUMNS,
+        "Tableau de bord — Candidats",
+        "dashboard_candidats"
+      );
+    } catch {
+      console.error("Export PDF échoué");
+    }
+  };
 
   const statCards = [
-    { title: "Domaines", value: stats.domaines, icon: Briefcase },
-    { title: "Diplômes", value: stats.diplomes, icon: Award },
-    { title: "Candidats", value: stats.candidats, icon: Users },
-    { title: "Demandes", value: stats.demandes, icon: FileText },
+    { label: "Campagnes", value: stats.campagnes, icon: Megaphone },
+    { label: "Domaines", value: stats.domaines, icon: Briefcase },
+    { label: "Diplômes", value: stats.diplomes, icon: Award },
+    { label: "Candidats", value: stats.candidats, icon: Users },
+    { label: "Demandes", value: stats.demandes, icon: FileText },
   ];
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100 text-gray-900">
-
-      {/* Header */}
       <header className="flex flex-col md:flex-row justify-between items-center p-6 gap-3">
-        <h1 className="text-2xl md:text-3xl font-bold text-[#0A5C36]">
-          Tableau de bord
-        </h1>
-
-        <div className="flex gap-2 items-center w-full md:w-auto">
-          <Input
-            placeholder="Rechercher un candidat"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 min-w-[220px] border-[#1B7A53]
-              focus:ring-2 focus:ring-[#B4EFC4]
-              focus:border-[#0A5C36] transition"
-          />
-
-          <Avatar className="border-2 border-[#0A5C36] w-9 h-9">
-            <AvatarImage src="/avatar.jpg" />
-            <AvatarFallback>AD</AvatarFallback>
-          </Avatar>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-[#0A5C36]">
+            Tableau de bord
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Vue d&apos;ensemble du recrutement
+          </p>
         </div>
+        <Avatar className="border-2 border-[#0A5C36] w-9 h-9">
+          <AvatarImage src="/avatar.jpg" />
+          <AvatarFallback>AD</AvatarFallback>
+        </Avatar>
       </header>
 
-      {/* Main */}
       <main className="flex-1 overflow-auto p-6 flex flex-col gap-6">
+        <ModuleStatCards items={statCards} loading={loading} />
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map(({ title, value, icon: Icon }) => (
-            <Card
-              key={title}
-              className="p-4 bg-white border border-[#E6F4ED]
-                rounded-lg shadow-md hover:shadow-xl transition"
-            >
-              <CardContent className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-600">{title}</p>
-                  <p className="text-2xl font-bold text-[#0A5C36]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="shadow-md border border-[#E6F4ED]">
+            <CardHeader className="py-3">
+              <CardTitle className="text-base text-[#0A5C36] flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Répartition par module
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-56">
+                {loading ? (
+                  <p className="text-sm text-gray-500">Chargement…</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                      <YAxis allowDecimals={false} />
+                      <Tooltip />
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#0A5C36"
+                        strokeWidth={2}
+                        dot={{ fill: "#0A5C36" }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-md border border-[#E6F4ED]">
+            <CardHeader className="py-3">
+              <CardTitle className="text-base text-[#0A5C36]">
+                Synthèse
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              {statCards.map(({ label, value }) => (
+                <div
+                  key={label}
+                  className="flex justify-between border-b border-[#F1F8F4] py-2"
+                >
+                  <span className="text-gray-600">{label}</span>
+                  <span className="font-semibold text-[#0A5C36]">
                     {loading ? "…" : value}
-                  </p>
+                  </span>
                 </div>
-                <Icon className="w-6 h-6 text-[#0A5C36]" />
-              </CardContent>
-            </Card>
-          ))}
+              ))}
+              <p className="text-xs text-gray-400 pt-2">
+                Total enregistrements :{" "}
+                {loading
+                  ? "…"
+                  : Object.values(stats).reduce((a, b) => a + b, 0)}
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Candidats */}
-        <Card className="shadow-lg border border-[#E6F4ED] rounded-lg">
-          <CardHeader className="py-3 px-4">
-            <CardTitle className="text-lg font-bold text-[#0A5C36]">
-              Candidats récents
-            </CardTitle>
-          </CardHeader>
+        <Card className="shadow-lg border border-[#E6F4ED] rounded-lg p-4">
+          <DataTableToolbar
+            title="Candidats"
+            searchPlaceholder="Rechercher par nom, email ou genre…"
+            query={query}
+            onQueryChange={setQuery}
+            onExportExcel={handleExportExcel}
+            onExportPdf={handleExportPdf}
+            filteredCount={filteredCount}
+            totalCount={total}
+          />
 
-          <CardContent className="p-3 overflow-x-auto">
+          <div className="overflow-x-auto mt-2">
             {loading ? (
-              <p className="text-sm text-gray-500">Chargement...</p>
+              <p className="text-sm text-gray-500 py-6">Chargement…</p>
             ) : (
               <Table className="border border-gray-200 rounded-lg text-sm">
                 <TableHeader>
@@ -131,24 +274,29 @@ export default function DashboardSymphos() {
                     <TableHead>ID</TableHead>
                     <TableHead>Nom complet</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Genre</TableHead>
                   </TableRow>
                 </TableHeader>
-
                 <TableBody>
-                  {filteredCandidates.map((c) => (
+                  {paginated.map((c) => (
                     <TableRow
                       key={c.id}
                       className="hover:bg-[#F4FBF7] transition"
                     >
                       <TableCell>{c.id}</TableCell>
                       <TableCell>{c.nom_complet}</TableCell>
-                      <TableCell>{c.email}</TableCell>
+                      <TableCell>{c.email ?? "—"}</TableCell>
+                      <TableCell className="capitalize">
+                        {c.genre ?? "—"}
+                      </TableCell>
                     </TableRow>
                   ))}
-
-                  {filteredCandidates.length === 0 && (
+                  {paginated.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-gray-500">
+                      <TableCell
+                        colSpan={4}
+                        className="text-center text-gray-500 py-6"
+                      >
                         Aucun candidat trouvé
                       </TableCell>
                     </TableRow>
@@ -156,29 +304,18 @@ export default function DashboardSymphos() {
                 </TableBody>
               </Table>
             )}
-          </CardContent>
+          </div>
+
+          {!loading && filteredCount > 0 && (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          )}
         </Card>
-
-        <Separator />
-
-        {/* Actions */}
-        <div className="flex flex-wrap gap-3">
-          <Button
-            variant="outline"
-            className="flex items-center gap-2 border-[#0A5C36]
-              text-[#0A5C36] hover:bg-[#E9F7F0]"
-          >
-            <Calendar className="w-4 h-4" /> Calendrier
-          </Button>
-
-          <Button
-            variant="outline"
-            className="flex items-center gap-2 border-[#0A5C36]
-              text-[#0A5C36] hover:bg-[#E9F7F0]"
-          >
-            <UsersIcon className="w-4 h-4" /> Utilisateurs
-          </Button>
-        </div>
       </main>
     </div>
   );

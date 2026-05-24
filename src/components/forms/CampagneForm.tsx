@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Save, X } from "lucide-react";
 import { toast } from "sonner";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
 interface CampagneFormProps {
   onAdded: () => void;
@@ -22,7 +23,7 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
   const [etat, setEtat] = useState("Ouvert");
   const [loading, setLoading] = useState(false);
 
-  const API_URL = "http://127.0.0.1:8000/api/campagnes/";
+  const API_URL = apiUrl(API_ENDPOINTS.campagnes);
 
   // Charger les données si on est en mode édition
   useEffect(() => {

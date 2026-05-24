@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
-const BACKEND_URL = "http://127.0.0.1:8000/api/domaines/";
+const BACKEND_URL = apiUrl(API_ENDPOINTS.domaines);
 
 function mapFromBackend(d: any) {
   return { IdDom: d.id_dom, LibDom: d.lib_dom };

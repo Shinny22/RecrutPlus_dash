@@ -7,8 +7,9 @@ import CampagneForm from "@/components/forms/CampagneForm";
 import CampagneList from "@/components/lists/CampagneList";
 import axios from "axios";
 import { toast } from "sonner";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
-const API_URL = "http://127.0.0.1:8000/api/campagnes/";
+const API_URL = apiUrl(API_ENDPOINTS.campagnes);
 
 export default function CampagnesPage() {
   const router = useRouter();

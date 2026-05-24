@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
-const API_DOMAINE = "http://127.0.0.1:8000/api/domaines/";
-const API_DIPLOME = "http://127.0.0.1:8000/api/diplomes/";
+const API_DOMAINE = apiUrl(API_ENDPOINTS.domaines);
+const API_DIPLOME = apiUrl(API_ENDPOINTS.diplomes);
 
 export default function DiplomeForm({ diplome, onClose }: any) {
   const [domaines, setDomaines] = useState<any[]>([]);

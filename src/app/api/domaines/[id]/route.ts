@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
-const BASE_URL = "http://127.0.0.1:8000/api/domaines/";
+const BASE_URL = apiUrl(API_ENDPOINTS.domaines);
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
-    const res = await fetch(`${BASE_URL}${params.id}/`, { method: "DELETE" });
+    const res = await fetch(`${BASE_URL}${id}/`, { method: "DELETE" });
     if (!res.ok) {
       const text = await res.text();
       return NextResponse.json({ error: text || "Upstream error" }, { status: res.status });
@@ -18,11 +20,15 @@ export async function DELETE(
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
   try {
     const body = await req.json();
     const payload = { lib_dom: body.LibDom };
-    const res = await fetch(`${BASE_URL}${params.id}/`, {
+    const res = await fetch(`${BASE_URL}${id}/`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

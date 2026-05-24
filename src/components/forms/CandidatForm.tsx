@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
 const validationSchema = Yup.object().shape({
   nom_cand: Yup.string().required("Nom requis"),
@@ -43,7 +44,7 @@ export default function CandidatForm({ onAdded, onCancel, editId }: any) {
 
   useEffect(() => {
     // 1. Charger les diplômes
-    fetch("http://127.0.0.1:8000/api/diplomes/")
+    fetch(apiUrl(API_ENDPOINTS.diplomes))
       .then(res => res.json())
       .then(data => setDiplomes(data))
       .catch(err => console.error("Erreur diplômes:", err));
@@ -51,7 +52,7 @@ export default function CandidatForm({ onAdded, onCancel, editId }: any) {
     // 2. Charger le candidat si modification
     if (editId) {
       setLoadingInitial(true);
-      fetch(`http://127.0.0.1:8000/api/candidats/${editId}/`)
+      fetch(apiUrl(`${API_ENDPOINTS.candidats}${editId}/`))
         .then(res => res.json())
         .then(data => {
           setInitialValues({
@@ -89,9 +90,9 @@ export default function CandidatForm({ onAdded, onCancel, editId }: any) {
     }
 
     try {
-      const url = editId 
-        ? `http://127.0.0.1:8000/api/candidats/${editId}/` 
-        : `http://127.0.0.1:8000/api/candidats/`;
+      const url = editId
+        ? apiUrl(`${API_ENDPOINTS.candidats}${editId}/`)
+        : apiUrl(API_ENDPOINTS.candidats);
       
       const response = await fetch(url, {
         method: editId ? "PUT" : "POST",

@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
-const API_URL = "http://127.0.0.1:8000/api/domaines/";
+const API_URL = apiUrl(API_ENDPOINTS.domaines);
 
 export default function DomaineForm({ domaine, onClose }: any) {
   const [libDom, setLibDom] = useState("");
