@@ -1,33 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import DemandeForm from "@/components/forms/DemandeForm";
 import DemandeList from "@/components/lists/DemandeList";
+
+type DemandeRow = Parameters<ComponentProps<typeof DemandeList>["onEdit"]>[0];
 
 export default function DemandesPage() {
   const router = useRouter();
   
   // États pour la navigation et l'édition
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editingDemande, setEditingDemande] = useState<DemandeRow | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Actions
   const handleAdd = () => {
-    setEditId(null);
+    setEditingDemande(null);
     setIsFormOpen(true);
   };
 
-  const handleEdit = (demande: any) => {
-    setEditId(demande.id);
+  const handleEdit = (demande: DemandeRow) => {
+    setEditingDemande(demande);
     setIsFormOpen(true);
   };
 
   const handleCancel = () => {
     setIsFormOpen(false);
-    setEditId(null);
+    setEditingDemande(null);
   };
 
   const handleFormSuccess = () => {
@@ -59,10 +61,10 @@ export default function DemandesPage() {
             />
           ) : (
             <div className="animate-in fade-in zoom-in duration-300">
-              <DemandeForm 
-                editId={editId} 
-                onAdded={handleFormSuccess} 
-                onCancel={handleCancel} 
+              <DemandeForm
+                demande={editingDemande}
+                onAdded={handleFormSuccess}
+                onClose={handleCancel}
               />
             </div>
           )}

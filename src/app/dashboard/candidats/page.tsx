@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import CandidatForm from "@/components/forms/CandidatForm";
 import CandidatList from "@/components/lists/CandidatList";
+
+type CandidatRow = Parameters<ComponentProps<typeof CandidatList>["onEdit"]>[0];
 
 export default function CandidatsPage() {
   const router = useRouter();
@@ -21,9 +23,8 @@ export default function CandidatsPage() {
   };
 
   // Actions : Ouvrir pour modification (C'est ici que le lien se fait avec la liste)
-  const handleEdit = (candidat: any) => {
-    // On suppose que l'identifiant est 'id' ou 'num_candidat' selon votre API
-    setEditId(candidat.id || candidat.num_candidat); 
+  const handleEdit = (candidat: CandidatRow) => {
+    setEditId(candidat.id_candidat); 
     setIsFormOpen(true);
   };
 
@@ -69,7 +70,6 @@ export default function CandidatsPage() {
                 editId={editId}
                 onAdded={handleFormSuccess}
                 onCancel={handleCancel}
-                className="rounded-2xl"
               />
             </div>
           )}

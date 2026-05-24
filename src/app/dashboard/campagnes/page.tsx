@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import CampagneForm from "@/components/forms/CampagneForm";
 import CampagneList from "@/components/lists/CampagneList";
-import axios from "axios";
-import { toast } from "sonner";
-import { API_ENDPOINTS, apiUrl } from "@/lib/api";
-
-const API_URL = apiUrl(API_ENDPOINTS.campagnes);
+import type { ApiRecord } from "@/lib/api-types";
 
 export default function CampagnesPage() {
   const router = useRouter();
@@ -19,26 +15,6 @@ export default function CampagnesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   
   const [refreshKey, setRefreshKey] = useState(0);
-  const [campagnes, setCampagnes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch API
-  const fetchCampagnes = async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get(API_URL);
-      setCampagnes(res.data);
-    } catch (err) {
-      console.error(err);
-      toast.error("Impossible de charger les campagnes");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCampagnes();
-  }, [refreshKey]);
 
   // Actions
   const handleAdd = () => {
@@ -46,8 +22,8 @@ export default function CampagnesPage() {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (campagne: any) => {
-    setEditId(campagne.cod_anne); // Mode édition avec l'ID
+  const handleEdit = (campagne: ApiRecord) => {
+    setEditId(String(campagne.cod_anne)); // Mode édition avec l'ID
     setIsFormOpen(true);
   };
 
@@ -79,8 +55,9 @@ export default function CampagnesPage() {
         <div className="bg-white p-6 rounded-xl shadow-md space-y-6 border border-[#E6F4ED]">
           {!isFormOpen ? (
             <CampagneList
+              key={refreshKey}
               onAdd={handleAdd}
-              onEdit={handleEdit} // Passé ici pour corriger l'erreur
+              onEdit={handleEdit}
             />
           ) : (
             <div className="animate-in fade-in zoom-in duration-300">

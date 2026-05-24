@@ -10,13 +10,18 @@ export interface Diplome {
   IdDom: number; // FK Domaine
 }
 
-export type CampagneEtat = "Planifiée" | "En cours" | "Clôturée";
+export type CampagneEtat =
+  | "Planifiée"
+  | "En cours"
+  | "Clôturée"
+  | "Ouvert"
+  | "Fermé";
 export interface Campagne {
-  CodAnne: string;
-  Description: string;
-  DatDebut: string; // ISO date string
-  DatFin: string;
-  Etat: CampagneEtat;
+  cod_anne: string;
+  description: string;
+  dat_debut: string;
+  dat_fin: string;
+  etat: CampagneEtat | string;
 }
 
 export type Genre = "M" | "F";

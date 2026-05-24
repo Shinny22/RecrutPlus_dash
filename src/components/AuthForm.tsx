@@ -191,7 +191,7 @@ export default function AuthForm() {
 
       // ✅ Redirection vers le dashboard
       window.location.href = "/dashboard";
-    } catch (err) {
+    } catch {
       setServerError("Impossible de joindre le serveur");
     }
   }
@@ -204,7 +204,7 @@ export default function AuthForm() {
 
           <div>
             <label htmlFor="username" className="block text-sm mb-1">
-              Nom d'utilisateur
+              Nom d&apos;utilisateur
             </label>
             <Field name="username" className="w-full rounded border px-3 py-2" />
             <ErrorMessage name="username" component="p" className="text-red-600 text-sm mt-1" />

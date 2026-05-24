@@ -27,6 +27,7 @@ import {
   type ExportColumn,
 } from "@/lib/export";
 import { toast } from "sonner";
+import type { Campagne } from "@/lib/types";
 import {
   Select,
   SelectContent,
@@ -313,7 +314,7 @@ export default function CampagneList({ onAdd, onEdit }: CampagneListProps) {
 
       {selectedView && (
         <CampagneView
-          campagne={selectedView as never}
+          campagne={selectedView as unknown as Campagne}
           onClose={() => setSelectedView(null)}
         />
       )}

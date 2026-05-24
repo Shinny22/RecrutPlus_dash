@@ -1,9 +1,18 @@
 "use client";
-import React from "react";
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { display, displayDate, type ApiRecord } from "@/lib/api-types";
 
-export default function CandidatView({ candidat, onClose }: any) {
+export default function CandidatView({
+  candidat,
+  onClose,
+}: {
+  candidat: ApiRecord;
+  onClose: () => void;
+}) {
+  const diplome = candidat.diplome as ApiRecord | undefined;
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-md space-y-4 rounded-2xl shadow-lg border border-[#E6F4ED] bg-white p-6">
@@ -14,17 +23,21 @@ export default function CandidatView({ candidat, onClose }: any) {
         </DialogHeader>
 
         <div className="space-y-2 text-gray-700">
-          <p><strong className="text-[#0A5C36]">Nom :</strong> {candidat.nomCand}</p>
-          <p><strong className="text-[#0A5C36]">Prénom :</strong> {candidat.prenCand}</p>
-          <p><strong className="text-[#0A5C36]">Genre :</strong> {candidat.genre}</p>
-          <p><strong className="text-[#0A5C36]">Date de naissance :</strong> {new Date(candidat.datNais).toLocaleDateString()}</p>
-          <p><strong className="text-[#0A5C36]">Lieu de naissance :</strong> {candidat.lieuNais}</p>
-          <p><strong className="text-[#0A5C36]">Email :</strong> {candidat.email}</p>
-          <p><strong className="text-[#0A5C36]">Téléphone 1 :</strong> {candidat.telephone1}</p>
-          {candidat.telephone2 && <p><strong className="text-[#0A5C36]">Téléphone 2 :</strong> {candidat.telephone2}</p>}
-          <p><strong className="text-[#0A5C36]">Statut matrimonial :</strong> {candidat.sitMat}</p>
-          <p><strong className="text-[#0A5C36]">Diplôme :</strong> {candidat.diplome?.designation}</p>
-          {candidat.photo && <p><strong className="text-[#0A5C36]">Photo :</strong> {candidat.photo}</p>}
+          <p><strong className="text-[#0A5C36]">Nom :</strong> {display(candidat.nom_cand)}</p>
+          <p><strong className="text-[#0A5C36]">Prénom :</strong> {display(candidat.pren_cand)}</p>
+          <p><strong className="text-[#0A5C36]">Genre :</strong> {display(candidat.genre)}</p>
+          <p><strong className="text-[#0A5C36]">Date de naissance :</strong> {displayDate(candidat.dat_nais)}</p>
+          <p><strong className="text-[#0A5C36]">Lieu de naissance :</strong> {display(candidat.lieu_nais)}</p>
+          <p><strong className="text-[#0A5C36]">Email :</strong> {display(candidat.email)}</p>
+          <p><strong className="text-[#0A5C36]">Téléphone 1 :</strong> {display(candidat.telephone1)}</p>
+          {candidat.telephone2 ? (
+            <p><strong className="text-[#0A5C36]">Téléphone 2 :</strong> {display(candidat.telephone2)}</p>
+          ) : null}
+          <p><strong className="text-[#0A5C36]">Statut matrimonial :</strong> {display(candidat.sitmat)}</p>
+          <p><strong className="text-[#0A5C36]">Diplôme :</strong> {display(diplome?.designation)}</p>
+          {candidat.photo ? (
+            <p><strong className="text-[#0A5C36]">Photo :</strong> {display(candidat.photo)}</p>
+          ) : null}
         </div>
 
         <Button

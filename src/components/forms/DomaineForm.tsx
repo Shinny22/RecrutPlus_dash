@@ -10,12 +10,20 @@ import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
 const API_URL = apiUrl(API_ENDPOINTS.domaines);
 
-export default function DomaineForm({ domaine, onClose }: any) {
+import type { ApiRecord } from "@/lib/api-types";
+
+export default function DomaineForm({
+  domaine,
+  onClose,
+}: {
+  domaine?: ApiRecord | null;
+  onClose: () => void;
+}) {
   const [libDom, setLibDom] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (domaine) setLibDom(domaine.lib_dom); // utilise lib_dom de l'API V1
+    if (domaine) setLibDom(String(domaine.lib_dom ?? ""));
   }, [domaine]);
 
   const handleSubmit = async (e: React.FormEvent) => {

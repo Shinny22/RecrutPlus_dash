@@ -22,15 +22,19 @@ export default function CampagneView({
 
         <div className="space-y-3 text-gray-700">
           <p>
-            <strong className="text-[#0A5C36]">Nom :</strong> {campagne.description}
+            <strong className="text-[#0A5C36]">Description :</strong> {campagne.description}
           </p>
           <p>
             <strong className="text-[#0A5C36]">Date Début :</strong>{" "}
-            {new Date(campagne.datDebut).toLocaleDateString()}
+            {campagne.dat_debut
+              ? new Date(campagne.dat_debut).toLocaleDateString("fr-FR")
+              : "—"}
           </p>
           <p>
             <strong className="text-[#0A5C36]">Date Fin :</strong>{" "}
-            {new Date(campagne.datFin).toLocaleDateString()}
+            {campagne.dat_fin
+              ? new Date(campagne.dat_fin).toLocaleDateString("fr-FR")
+              : "—"}
           </p>
           <p>
             <strong className="text-[#0A5C36]">État :</strong> {campagne.etat}

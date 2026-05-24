@@ -10,12 +10,24 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { API_ENDPOINTS, apiUrl } from "@/lib/api";
+import type { ApiRecord, DiplomeRecord } from "@/lib/api-types";
 
 const API_DOMAINE = apiUrl(API_ENDPOINTS.domaines);
 const API_DIPLOME = apiUrl(API_ENDPOINTS.diplomes);
 
-export default function DiplomeForm({ diplome, onClose }: any) {
-  const [domaines, setDomaines] = useState<any[]>([]);
+interface DiplomeFormValues {
+  designation: string;
+  domaineId: string;
+}
+
+export default function DiplomeForm({
+  diplome,
+  onClose,
+}: {
+  diplome?: DiplomeRecord | null;
+  onClose: () => void;
+}) {
+  const [domaines, setDomaines] = useState<ApiRecord[]>([]);
 
   // 1. Schéma de validation Yup
   const validationSchema = Yup.object({
@@ -27,11 +39,12 @@ export default function DiplomeForm({ diplome, onClose }: any) {
   });
 
   // 2. Configuration de Formik
-  const formik = useFormik({
+  const formik = useFormik<DiplomeFormValues>({
     initialValues: {
       designation: diplome?.designation || "",
       domaineId: diplome?.domaine ? String(diplome.domaine) : "",
     },
+    enableReinitialize: true,
     validationSchema: validationSchema,
     onSubmit: async (values) => {
       const payload = {
@@ -113,8 +126,8 @@ export default function DiplomeForm({ diplome, onClose }: any) {
               </SelectTrigger>
               <SelectContent>
                 {domaines.map((d) => (
-                  <SelectItem key={d.id_dom} value={String(d.id_dom)}>
-                    {d.lib_dom}
+                  <SelectItem key={String(d.id_dom)} value={String(d.id_dom)}>
+                    {String(d.lib_dom)}
                   </SelectItem>
                 ))}
               </SelectContent>

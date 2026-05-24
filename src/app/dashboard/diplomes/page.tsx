@@ -1,16 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import DiplomeForm from "@/components/forms/DiplomeForm";
 import DiplomeList from "@/components/lists/DiplomeList";
+import { API_ENDPOINTS, apiUrl } from "@/lib/api";
+import type { DiplomeRecord } from "@/lib/api-types";
 
 export default function DiplomesPage() {
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0); // Clé pour forcer le rafraîchissement de la liste
+  const [editingDiplome, setEditingDiplome] = useState<DiplomeRecord | null>(null);
+  const [loadingDiplome, setLoadingDiplome] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!adding || editingId == null) {
+      setEditingDiplome(null);
+      return;
+    }
+    setLoadingDiplome(true);
+    fetch(apiUrl(`${API_ENDPOINTS.diplomes}${editingId}/`))
+      .then((res) => res.json())
+      .then((data) => setEditingDiplome(data))
+      .catch(() => setEditingDiplome(null))
+      .finally(() => setLoadingDiplome(false));
+  }, [adding, editingId]);
 
   // --- ACTIONS ---
   const handleAdd = () => {
@@ -67,11 +84,14 @@ export default function DiplomesPage() {
                 <p className="text-sm text-gray-500">Remplissez les informations ci-dessous</p>
               </div>
               
-              <DiplomeForm 
-                editId={editingId} 
-                onAdded={handleSuccess} 
-                onCancel={handleCancel} 
-              />
+              {loadingDiplome && editingId ? (
+                <p className="text-sm text-gray-500">Chargement du diplôme…</p>
+              ) : (
+                <DiplomeForm
+                  diplome={editingDiplome}
+                  onClose={handleSuccess}
+                />
+              )}
             </div>
           )}
           

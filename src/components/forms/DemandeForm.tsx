@@ -6,11 +6,28 @@ import * as Yup from "yup";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from "@/components/ui/select";
 import { Loader2, FileUp, User, Briefcase, GraduationCap, CheckCircle2, X, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { API_ENDPOINTS, apiUrl } from "@/lib/api";
+import type { ApiRecord } from "@/lib/api-types";
+
+interface DemandeFormData {
+  id?: number;
+  id_dde?: number;
+  anne_obt_dip?: number;
+  etat_dde?: string;
+  reponse?: string;
+  campagne?: string | number;
+  candidat?: string | number;
+}
+
+interface DemandeFormProps {
+  demande?: DemandeFormData | null;
+  onClose?: () => void;
+  onAdded: () => void;
+}
 
 // Validation Yup pour éviter les erreurs 400 (Bad Request)
 const validationSchema = Yup.object().shape({
@@ -22,9 +39,13 @@ const validationSchema = Yup.object().shape({
 });
 
 // Correction : Ajout de = () => {} pour éviter l'erreur "onClose is not a function"
-export default function DemandeForm({ demande, onClose = () => {}, onAdded }: any) {
-  const [campagnes, setCampagnes] = useState<any[]>([]);
-  const [candidats, setCandidats] = useState<any[]>([]);
+export default function DemandeForm({
+  demande,
+  onClose = () => {},
+  onAdded,
+}: DemandeFormProps) {
+  const [campagnes, setCampagnes] = useState<ApiRecord[]>([]);
+  const [candidats, setCandidats] = useState<ApiRecord[]>([]);
   const [files, setFiles] = useState<{ cv: File | null; diplome: File | null }>({ cv: null, diplome: null });
 
   // Chargement des données au montage du composant
@@ -37,7 +58,7 @@ export default function DemandeForm({ demande, onClose = () => {}, onAdded }: an
         ]);
         setCampagnes(cp);
         setCandidats(cand);
-      } catch (err) {
+      } catch {
         toast.error("Erreur de communication avec le serveur");
       }
     };
@@ -48,8 +69,8 @@ export default function DemandeForm({ demande, onClose = () => {}, onAdded }: an
     anne_obt_dip: demande?.anne_obt_dip || 2025,
     etat_dde: demande?.etat_dde || "ENVOYEE",
     reponse: demande?.reponse || "",
-    campagne: demande?.campagne || "", 
-    candidat: demande?.candidat || "",
+    campagne: demande?.campagne != null ? String(demande.campagne) : "",
+    candidat: demande?.candidat != null ? String(demande.candidat) : "",
   };
 
   return (
@@ -89,16 +110,17 @@ export default function DemandeForm({ demande, onClose = () => {}, onAdded }: an
               formData.append("anne_obt_dip", String(values.anne_obt_dip));
               formData.append("etat_dde", values.etat_dde);
               formData.append("reponse", values.reponse || "");
-              formData.append("campagne", values.campagne);
-              formData.append("candidat", values.candidat);
+              formData.append("campagne", String(values.campagne));
+              formData.append("candidat", String(values.candidat));
               
               // Envoi des fichiers si présents
               if (files.cv) formData.append("cv", files.cv);
               if (files.diplome) formData.append("diplome_fichier", files.diplome);
 
-              const method = demande ? "PUT" : "POST";
-              const url = demande
-                ? apiUrl(`${API_ENDPOINTS.demandes}${demande.id_dde}/`)
+              const demandeId = demande?.id ?? demande?.id_dde;
+              const method = demandeId ? "PUT" : "POST";
+              const url = demandeId
+                ? apiUrl(`${API_ENDPOINTS.demandes}${demandeId}/`)
                 : apiUrl(API_ENDPOINTS.demandes);
 
               const res = await fetch(url, { method, body: formData });
@@ -112,7 +134,7 @@ export default function DemandeForm({ demande, onClose = () => {}, onAdded }: an
               toast.success("Opération réussie !");
               onAdded(); 
               onClose();
-            } catch (error) {
+            } catch {
               toast.error("Une erreur réseau est survenue");
             } finally {
               setSubmitting(false);
@@ -134,8 +156,8 @@ export default function DemandeForm({ demande, onClose = () => {}, onAdded }: an
                     </SelectTrigger>
                     <SelectContent>
                       {candidats.map((c) => (
-                        <SelectItem key={c.id_candidat} value={String(c.id_candidat)}>
-                          {c.nom_cand} {c.pren_cand}
+                        <SelectItem key={String(c.id_candidat)} value={String(c.id_candidat)}>
+                          {String(c.nom_cand)} {String(c.pren_cand)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -153,8 +175,8 @@ export default function DemandeForm({ demande, onClose = () => {}, onAdded }: an
                       </SelectTrigger>
                       <SelectContent>
                         {campagnes.map((cp) => (
-                          <SelectItem key={cp.cod_anne} value={String(cp.cod_anne)}>
-                            {cp.description || cp.cod_anne}
+                          <SelectItem key={String(cp.cod_anne)} value={String(cp.cod_anne)}>
+                            {String(cp.description || cp.cod_anne)}
                           </SelectItem>
                         ))}
                       </SelectContent>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Formik, Form, Field, ErrorMessage } from "formik";
+import { Formik, Form, Field, ErrorMessage, type FormikHelpers } from "formik";
 import * as Yup from "yup";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { API_ENDPOINTS, apiUrl } from "@/lib/api";
+import type { ApiRecord } from "@/lib/api-types";
+
+interface CandidatFormProps {
+  onAdded: () => void;
+  onCancel: () => void;
+  editId?: string | number | null;
+}
+
+interface CandidatFormValues {
+  nom_cand: string;
+  pren_cand: string;
+  genre: string;
+  dat_nais: string;
+  lieu_nais: string;
+  telephone1: string;
+  telephone2: string;
+  email: string;
+  sitmat: string;
+  diplome: string;
+}
 
 const validationSchema = Yup.object().shape({
   nom_cand: Yup.string().required("Nom requis"),
@@ -24,8 +44,8 @@ const validationSchema = Yup.object().shape({
   diplome: Yup.string().nullable(), 
 });
 
-export default function CandidatForm({ onAdded, onCancel, editId }: any) {
-  const [diplomes, setDiplomes] = useState<any[]>([]);
+export default function CandidatForm({ onAdded, onCancel, editId }: CandidatFormProps) {
+  const [diplomes, setDiplomes] = useState<ApiRecord[]>([]);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [loadingInitial, setLoadingInitial] = useState(false);
 
@@ -72,16 +92,19 @@ export default function CandidatForm({ onAdded, onCancel, editId }: any) {
     }
   }, [editId]);
 
-  const handleSubmit = async (values: any, { setSubmitting }: any) => {
+  const handleSubmit = async (
+    values: CandidatFormValues,
+    { setSubmitting }: FormikHelpers<CandidatFormValues>
+  ) => {
     const formData = new FormData();
     
     // On boucle proprement sur les valeurs
     Object.keys(values).forEach(key => {
       // On n'envoie pas de chaîne vide pour le diplôme s'il est nul
       if (key === "diplome" && (values[key] === "" || values[key] === "null")) {
-        return; 
+        return;
       }
-      formData.append(key, values[key]);
+      formData.append(key, values[key as keyof CandidatFormValues]);
     });
 
     // Gestion de la photo : on ne l'ajoute que si l'utilisateur en a choisi une nouvelle
@@ -196,9 +219,9 @@ export default function CandidatForm({ onAdded, onCancel, editId }: any) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="null">Aucun</SelectItem>
-                      {diplomes.map((d: any) => (
-                        <SelectItem key={d.id_diplome} value={String(d.id_diplome)}>
-                          {d.designation}
+                      {diplomes.map((d) => (
+                        <SelectItem key={String(d.id_diplome)} value={String(d.id_diplome)}>
+                          {String(d.designation)}
                         </SelectItem>
                       ))}
                     </SelectContent>

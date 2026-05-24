@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
+
 export default function AuthCard({
   children,
   title,
 }: {
-  children: any;
+  children: ReactNode;
   title: string;
 }) {
   return (

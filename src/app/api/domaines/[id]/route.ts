@@ -15,7 +15,7 @@ export async function DELETE(
       return NextResponse.json({ error: text || "Upstream error" }, { status: res.status });
     }
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to delete domaine" }, { status: 500 });
   }
 }
@@ -39,7 +39,7 @@ export async function PUT(
     }
     const updated = await res.json();
     return NextResponse.json({ IdDom: updated.id_dom, LibDom: updated.lib_dom });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to update domaine" }, { status: 500 });
   }
 }

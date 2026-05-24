@@ -3,7 +3,12 @@ import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
 const BACKEND_URL = apiUrl(API_ENDPOINTS.domaines);
 
-function mapFromBackend(d: any) {
+interface BackendDomaine {
+  id_dom: number;
+  lib_dom: string;
+}
+
+function mapFromBackend(d: BackendDomaine) {
   return { IdDom: d.id_dom, LibDom: d.lib_dom };
 }
 
@@ -16,7 +21,7 @@ export async function GET() {
     const data = await res.json();
     const mapped = Array.isArray(data) ? data.map(mapFromBackend) : [];
     return NextResponse.json(mapped);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch domaines" }, { status: 500 });
   }
 }
@@ -37,7 +42,7 @@ export async function POST(req: Request) {
     }
     const created = await res.json();
     return NextResponse.json(mapFromBackend(created), { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to create domaine" }, { status: 500 });
   }
 }

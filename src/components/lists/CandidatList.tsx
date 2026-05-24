@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, User, Eye, Edit3, Trash2, Users, List, Hash } from "lucide-react";
 import { toast } from "sonner";
+import type { ApiRecord } from "@/lib/api-types";
 import CandidatView from "../CandidatView";
 import DataTableToolbar from "../DataTableToolbar";
 import PaginationControls from "../PaginationControls";
@@ -317,7 +318,7 @@ export default function CandidatList({ onAdd, onEdit }: CandidatListProps) {
       )}
 
       {viewing && selected && (
-        <CandidatView candidat={selected} onClose={() => setViewing(false)} />
+        <CandidatView candidat={selected as unknown as ApiRecord} onClose={() => setViewing(false)} />
       )}
     </div>
   );

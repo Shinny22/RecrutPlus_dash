@@ -9,6 +9,8 @@ import { Loader2, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { API_ENDPOINTS, apiUrl } from "@/lib/api";
 
+const API_URL = apiUrl(API_ENDPOINTS.campagnes);
+
 interface CampagneFormProps {
   onAdded: () => void;
   onCancel: () => void;
@@ -22,8 +24,6 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
   const [datFin, setDatFin] = useState("");
   const [etat, setEtat] = useState("Ouvert");
   const [loading, setLoading] = useState(false);
-
-  const API_URL = apiUrl(API_ENDPOINTS.campagnes);
 
   // Charger les données si on est en mode édition
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
       }
 
       onAdded();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erreur :", error);
       toast.error("❌ Échec de l'enregistrement.");
     } finally {

@@ -1,10 +1,16 @@
 "use client";
 
-import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { display, type ApiRecord } from "@/lib/api-types";
 
-export default function DomaineView({ domaine, onClose }: any) {
+export default function DomaineView({
+  domaine,
+  onClose,
+}: {
+  domaine: ApiRecord;
+  onClose: () => void;
+}) {
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-md space-y-4 rounded-xl p-6 shadow-md bg-white">
@@ -16,10 +22,10 @@ export default function DomaineView({ domaine, onClose }: any) {
 
         <div className="text-gray-700 space-y-2">
           <div>
-            <strong className="text-[#0A5C36]">ID:</strong> {domaine.idDom}
+            <strong className="text-[#0A5C36]">ID :</strong> {display(domaine.id_dom)}
           </div>
           <div>
-            <strong className="text-[#0A5C36]">Libellé:</strong> {domaine.libDom}
+            <strong className="text-[#0A5C36]">Libellé :</strong> {display(domaine.lib_dom)}
           </div>
         </div>
 
