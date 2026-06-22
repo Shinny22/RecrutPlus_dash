@@ -344,7 +344,6 @@
 //   );
 // }
 
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -375,20 +374,21 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-interface Demande {
-  id: number;
+export interface Demande {
+  id_dde: number; // Aligné sur le modèle Django
   cv: string;
   diplome_fichier?: string | null;
   anne_obt_dip: number;
   candidat: number;
-  campagne: string;
-  date_creation?: string;
+  campagne: string; 
+  dat_dde?: string;
+  etat_dde: string;
 }
 
 const API_URL = apiUrl(API_ENDPOINTS.demandes);
 
 const COLUMNS: ExportColumn[] = [
-  { key: "id", label: "ID" },
+  { key: "id_dde", label: "ID" },
   { key: "candidat", label: "ID Candidat" },
   { key: "campagne", label: "Campagne" },
   { key: "anne_obt_dip", label: "Année diplôme" },
@@ -406,16 +406,15 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
   const [campagneFilter, setCampagneFilter] = useState("");
   const [anneeFilter, setAnneeFilter] = useState("");
 
-  // 🔐 Configuration correcte de l'enveloppe de requêtes Axios
-  const getAuthHeaders = (additionalHeaders = {}) => {
-    const token = localStorage.getItem("access_token");
+  const getAuthHeaders = useCallback((additionalHeaders = {}) => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
     return {
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...additionalHeaders,
       },
     };
-  };
+  }, []);
 
   const fetchDemandes = useCallback(async () => {
     setLoading(true);
@@ -427,7 +426,7 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAuthHeaders]);
 
   useEffect(() => {
     fetchDemandes();
@@ -461,7 +460,7 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
     filteredCount,
   } = useDataTable(demandes, {
     pageSize: 10,
-    searchKeys: ["id", "candidat", "campagne"],
+    searchKeys: ["id_dde", "candidat", "campagne"],
     filterFn,
   });
 
@@ -488,7 +487,7 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
   const exportData = () =>
     rowsForExport(
       filtered.map((d) => ({
-        id: d.id,
+        id_dde: d.id_dde,
         candidat: d.candidat,
         campagne: d.campagne,
         anne_obt_dip: d.anne_obt_dip,
@@ -514,9 +513,7 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
   };
 
   const handleImportExcel = async (file: File) => {
-    toast.info(
-      "L'import des demandes nécessite des fichiers CV. Seules les métadonnées sont importées."
-    );
+    toast.info("Importation des métadonnées des demandes...");
     try {
       const rows = await importFromExcel(file);
       let ok = 0;
@@ -549,14 +546,14 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
       toast.success(`${ok} demande(s) importée(s)`);
       fetchDemandes();
     } catch {
-      toast.error("Échec de l'import — vérifiez le format du fichier");
+      toast.error("Échec de l'import");
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id_dde: number) => {
     if (!confirm("Supprimer cette demande ?")) return;
     try {
-      await axios.delete(`${API_URL}${id}/`, getAuthHeaders());
+      await axios.delete(`${API_URL}${id_dde}/`, getAuthHeaders());
       toast.success("Demande supprimée");
       fetchDemandes();
     } catch {
@@ -644,8 +641,8 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
               </TableRow>
             ) : (
               paginated.map((d) => (
-                <TableRow key={d.id} className="hover:bg-[#F3F9F5]">
-                  <TableCell className="text-center">{d.id}</TableCell>
+                <TableRow key={d.id_dde} className="hover:bg-[#F3F9F5]">
+                  <TableCell className="text-center">{d.id_dde}</TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       <a
@@ -678,7 +675,7 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
                     <Button
                       size="sm"
                       className="bg-[#D72638] text-white"
-                      onClick={() => handleDelete(d.id)}
+                      onClick={() => handleDelete(d.id_dde)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
