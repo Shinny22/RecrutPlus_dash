@@ -345,7 +345,6 @@
 // }
 
 
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -407,7 +406,7 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
   const [campagneFilter, setCampagneFilter] = useState("");
   const [anneeFilter, setAnneeFilter] = useState("");
 
-  // 🔐 Récupération dynamique et sécurisée du token JWT
+  // 🔐 Configuration correcte de l'enveloppe de requêtes Axios
   const getAuthHeaders = (additionalHeaders = {}) => {
     const token = localStorage.getItem("access_token");
     return {
@@ -544,7 +543,6 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
           continue;
         }
 
-        // Transmission sécurisée avec l'en-tête multipart ET le Token d'authentification
         await axios.post(API_URL, form, getAuthHeaders({ "Content-Type": "multipart/form-data" }));
         ok++;
       }

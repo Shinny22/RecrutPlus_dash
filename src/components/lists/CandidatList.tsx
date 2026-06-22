@@ -325,8 +325,6 @@
 // }
 
 
-
-
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -342,7 +340,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, User, Eye, Edit3, Trash2, Users, List, Hash } from "lucide-react";
 import { toast } from "sonner";
-import type { ApiRecord } from "@/lib/api-types";
 import CandidatView from "../CandidatView";
 import DataTableToolbar from "../DataTableToolbar";
 import PaginationControls from "../PaginationControls";
@@ -364,7 +361,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface Candidat {
+export interface Candidat {
   id_candidat: number;
   nom_cand: string;
   pren_cand: string;
@@ -377,6 +374,10 @@ interface Candidat {
   photo?: string | null;
   sitmat?: string;
   diplome?: number | null;
+}
+
+interface EnrichedCandidat extends Candidat {
+  nom_complet: string;
 }
 
 const API_URL = apiUrl(API_ENDPOINTS.candidats);
@@ -402,11 +403,11 @@ export default function CandidatList({ onAdd, onEdit }: CandidatListProps) {
   const [viewing, setViewing] = useState(false);
   const [genreFilter, setGenreFilter] = useState("all");
 
-  // 🔐 Helper pour injecter l'en-tête Authorization dynamiquement
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("access_token");
-    return token ? { Headers: { Authorization: `Bearer ${token}` } } : {};
-  };
+  // 🔐 Helper avec "headers" en minuscules pour la compatibilité Axios & TypeScript
+  const getAuthHeaders = useCallback(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  }, []);
 
   const fetchCandidats = useCallback(async () => {
     setLoading(true);
@@ -419,13 +420,13 @@ export default function CandidatList({ onAdd, onEdit }: CandidatListProps) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [getAuthHeaders]);
 
   useEffect(() => {
     fetchCandidats();
   }, [fetchCandidats]);
 
-  const enriched = useMemo(
+  const enriched = useMemo<EnrichedCandidat[]>(
     () =>
       candidats.map((c) => ({
         ...c,
@@ -435,7 +436,7 @@ export default function CandidatList({ onAdd, onEdit }: CandidatListProps) {
   );
 
   const filterFn = useCallback(
-    (item: Candidat & { nom_complet: string }) =>
+    (item: EnrichedCandidat) =>
       genreFilter === "all" || item.genre === genreFilter,
     [genreFilter]
   );
@@ -655,7 +656,7 @@ export default function CandidatList({ onAdd, onEdit }: CandidatListProps) {
       )}
 
       {viewing && selected && (
-        <CandidatView candidat={selected as unknown as ApiRecord} onClose={() => setViewing(false)} />
+        <CandidatView candidat={selected} onClose={() => setViewing(false)} />
       )}
     </div>
   );
