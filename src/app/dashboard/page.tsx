@@ -80,11 +80,24 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // 1. Récupération du token stocké lors du login
+        const token = localStorage.getItem("access_token");
+
+        // 2. Configuration du header d'autorisation
+        const config = {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        };
+
+        // 3. Envoi des requêtes avec le token requis par l'API
         const [statsRes, candRes] = await Promise.all([
-          axios.get(apiUrl(API_ENDPOINTS.stats)),
-          axios.get(apiUrl(API_ENDPOINTS.candidats)),
+          axios.get(apiUrl(API_ENDPOINTS.stats), config),
+          axios.get(apiUrl(API_ENDPOINTS.candidats), config),
         ]);
+
         setStats(statsRes.data.global ?? statsRes.data);
+        
         const raw = Array.isArray(candRes.data) ? candRes.data : candRes.data.results ?? [];
         setCandidates(
           raw.map((c: CandidatRow) => ({
