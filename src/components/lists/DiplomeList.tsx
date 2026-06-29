@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Award, Hash, List } from "lucide-react";
 import { toast } from "sonner";
-import { Award, Hash, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -63,25 +62,48 @@ export default function DiplomeList({ onAdd, onEdit }: DiplomeListProps) {
     id: number | null;
   }>({ open: false, id: null });
 
+  const getAuthConfig = () => {
+    const token = localStorage.getItem("access_token");
+    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  };
+
   const fetchDiplomes = useCallback(async () => {
     setLoading(true);
     try {
       const [dipRes, domRes] = await Promise.all([
-        axios.get(API_URL),
-        axios.get(apiUrl(API_ENDPOINTS.domaines)),
+        axios.get(API_URL, getAuthConfig()),
+        axios.get(apiUrl(API_ENDPOINTS.domaines), getAuthConfig()),
       ]);
-      const list = Array.isArray(dipRes.data) ? dipRes.data : dipRes.data.results ?? [];
+
+      const listDomaines = Array.isArray(domRes.data) ? domRes.data : domRes.data.results ?? [];
+      setDomaines(listDomaines);
+
+      const listDiplomes = Array.isArray(dipRes.data) ? dipRes.data : dipRes.data.results ?? [];
+      
+      // Reconstruction propre du libellé pour éviter l'affichage de "N/A"
       setDiplomes(
-        list.map((d: Record<string, unknown>) => ({
-          ...d,
-          domaine_lib:
-            (d.domaine as { lib_dom?: string })?.lib_dom ??
-            (d.domaine as { libdom?: string })?.libdom ??
-            "N/A",
-        }))
-      );
-      setDomaines(
-        Array.isArray(domRes.data) ? domRes.data : domRes.data.results ?? []
+        listDiplomes.map((d: Record<string, unknown>) => {
+          let libelle = "Non renseigné";
+          
+          // Cas 1 : Domaine est un objet imbriqué
+          if (d.domaine && typeof d.domaine === "object") {
+            libelle = (d.domaine as { lib_dom?: string })?.lib_dom ?? 
+                      (d.domaine as { libdom?: string })?.libdom ?? 
+                      libelle;
+          } 
+          // Cas 2 : Domaine est uniquement un ID numérique (on cherche la correspondance dans les domaines chargés)
+          else if (d.domaine) {
+            const match = listDomaines.find((dom: Record<string, unknown>) => String(dom.id_dom) === String(d.domaine));
+            if (match) {
+              libelle = String(match.lib_dom || match.libdom || libelle);
+            }
+          }
+
+          return {
+            ...d,
+            domaine_lib: libelle,
+          };
+        })
       );
     } catch {
       toast.error("Impossible de charger les diplômes.");
@@ -163,7 +185,7 @@ export default function DiplomeList({ onAdd, onEdit }: DiplomeListProps) {
         await axios.post(API_URL, {
           designation: String(designation),
           domaine: Number(domaine),
-        });
+        }, getAuthConfig());
         ok++;
       }
       toast.success(`${ok} diplôme(s) importé(s)`);
@@ -175,11 +197,13 @@ export default function DiplomeList({ onAdd, onEdit }: DiplomeListProps) {
 
   const handleDelete = async (id: number) => {
     try {
-      await axios.delete(`${API_URL}${id}/`);
+      await axios.delete(`${API_URL}${id}/`, getAuthConfig());
       toast.success("Diplôme supprimé");
       fetchDiplomes();
     } catch {
       toast.error("Échec de la suppression");
+    } finally {
+      setConfirmDelete({ open: false, id: null });
     }
   };
 
@@ -248,7 +272,8 @@ export default function DiplomeList({ onAdd, onEdit }: DiplomeListProps) {
               )}
               {paginated.map((d) => (
                 <TableRow key={String(d.id_diplome)} className="hover:bg-[#E9F7F0]">
-                  <TableCell>#{String(d.id_diplome)}</TableCell>
+                  {/* Suppression du symbole # */}
+                  <TableCell>{String(d.id_diplome)}</TableCell>
                   <TableCell className="font-medium">{String(d.designation)}</TableCell>
                   <TableCell>{String(d.domaine_lib)}</TableCell>
                   <TableCell className="flex justify-end gap-2">
@@ -297,8 +322,8 @@ export default function DiplomeList({ onAdd, onEdit }: DiplomeListProps) {
       )}
 
       {openForm && (
-        <DiplomeForm
-          diplome={selected}
+        <DomaineForm
+          domaine={selected}
           onClose={() => {
             setOpenForm(false);
             fetchDiplomes();

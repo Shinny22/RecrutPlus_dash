@@ -11,9 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Trash2, Briefcase, Hash, List } from "lucide-react";
 import { toast } from "sonner";
 import DomaineForm from "../forms/DomaineForm";
+import ConfirmDelete from "@/components/ConfirmDelete";
 import DataTableToolbar from "../DataTableToolbar";
 import PaginationControls from "../PaginationControls";
 import ModuleStatCards from "../ModuleStatCards";
@@ -26,7 +27,6 @@ import {
   rowsForExport,
   type ExportColumn,
 } from "@/lib/export";
-import { Briefcase, Hash, List } from "lucide-react";
 
 const API_URL = apiUrl(API_ENDPOINTS.domaines);
 
@@ -40,11 +40,20 @@ export default function DomaineList() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
   const [openForm, setOpenForm] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    open: boolean;
+    id: number | null;
+  }>({ open: false, id: null });
+
+  const getAuthConfig = () => {
+    const token = localStorage.getItem("access_token");
+    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  };
 
   const fetchDomaines = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(API_URL);
+      const res = await axios.get(API_URL, getAuthConfig());
       setDomaines(Array.isArray(res.data) ? res.data : res.data.results ?? []);
     } catch {
       toast.error("Impossible de charger les domaines.");
@@ -114,10 +123,9 @@ export default function DomaineList() {
       const rows = await importFromExcel(file);
       let ok = 0;
       for (const row of rows) {
-        const lib =
-          row.lib_dom ?? row.LibDom ?? row.libelle ?? row.Libellé;
+        const lib = row.lib_dom ?? row.LibDom ?? row.libelle ?? row.Libellé;
         if (!lib) continue;
-        await axios.post(API_URL, { lib_dom: String(lib) });
+        await axios.post(API_URL, { lib_dom: String(lib) }, getAuthConfig());
         ok++;
       }
       toast.success(`${ok} domaine(s) importé(s)`);
@@ -128,13 +136,14 @@ export default function DomaineList() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Supprimer ce domaine ?")) return;
     try {
-      await axios.delete(`${API_URL}${id}/`);
+      await axios.delete(`${API_URL}${id}/`, getAuthConfig());
       toast.success("Domaine supprimé");
       fetchDomaines();
     } catch {
       toast.error("Échec de la suppression");
+    } finally {
+      setConfirmDelete({ open: false, id: null });
     }
   };
 
@@ -172,7 +181,7 @@ export default function DomaineList() {
         </div>
       ) : (
         <>
-          <Table className="w-full border border-[#E7F5EF] rounded-xl shadow-sm overflow-hidden">
+          <Table className="w-full border border-[#E7F5EF] rounded-xl shadow-sm overflow-hidden bg-white">
             <TableHeader>
               <TableRow className="bg-[#E7F5EF]">
                 <TableHead className="text-[#0A5C36] font-semibold">ID</TableHead>
@@ -212,7 +221,7 @@ export default function DomaineList() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDelete(Number(d.id_dom))}
+                      onClick={() => setConfirmDelete({ open: true, id: Number(d.id_dom) })}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -241,6 +250,16 @@ export default function DomaineList() {
             setOpenForm(false);
             fetchDomaines();
           }}
+        />
+      )}
+
+      {confirmDelete.open && confirmDelete.id && (
+        <ConfirmDelete
+          open={confirmDelete.open}
+          onClose={() => setConfirmDelete({ open: false, id: null })}
+          onConfirm={() => handleDelete(confirmDelete.id!)}
+          title="Supprimer le domaine"
+          message="Voulez-vous vraiment supprimer ce domaine ?"
         />
       )}
     </div>

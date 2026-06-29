@@ -178,7 +178,6 @@
 
 
 
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -189,6 +188,13 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { API_ENDPOINTS, apiUrl } from "@/lib/api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const API_URL = apiUrl(API_ENDPOINTS.campagnes);
 
@@ -211,7 +217,6 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
     if (editId) {
       setLoading(true);
       
-      // 🔑 Récupération du token pour sécuriser le GET initial
       const token = localStorage.getItem("access_token");
       const config = {
         headers: {
@@ -221,10 +226,10 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
 
       axios.get(`${API_URL}${editId}/`, config)
         .then((res) => {
-          setCodAnne(res.data.cod_anne);
-          setDescription(res.data.description);
-          setDatDebut(res.data.dat_debut);
-          setDatFin(res.data.dat_fin);
+          setCodAnne(res.data.cod_anne || "");
+          setDescription(res.data.description || "");
+          setDatDebut(res.data.dat_debut || "");
+          setDatFin(res.data.dat_fin || "");
           setEtat(res.data.etat || "Ouvert");
         })
         .catch(() => toast.error("Erreur lors de la récupération des données"))
@@ -245,7 +250,6 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
         etat 
       };
 
-      // 🔑 Récupération du token pour la soumission des données
       const token = localStorage.getItem("access_token");
       const config = {
         headers: {
@@ -275,7 +279,7 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
     <div className="p-6 bg-white rounded-2xl shadow-xl border border-[#E6F4ED] max-w-lg mx-auto">
       <h2 className="text-2xl font-bold text-[#0A5C36] mb-6">
         {editId ? "Modifier la Campagne" : "Nouvelle Campagne"}
-      </h2>
+      </h2> 
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Code Année (ID) */}
@@ -287,7 +291,7 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
             onChange={(e) => setCodAnne(e.target.value)}
             placeholder="Ex: 2026"
             required
-            disabled={!!editId} // La clé primaire ne doit pas être modifiée
+            disabled={!!editId}
             className="border-[#1B7A53] focus:ring-2 focus:ring-[#B4EFC4] rounded-xl"
           />
         </div>
@@ -331,18 +335,18 @@ export default function CampagneForm({ onAdded, onCancel, editId }: CampagneForm
           </div>
         </div>
 
-        {/* État (Dropdown stylisé) */}
+        {/* État (Composant Shadcn/ui) */}
         <div className="space-y-2">
           <Label htmlFor="etat" className="text-[#0A5C36] font-semibold">État</Label>
-          <select
-            id="etat"
-            className="w-full border border-[#1B7A53] rounded-xl px-3 py-2 bg-white text-sm focus:ring-2 focus:ring-[#B4EFC4] outline-none"
-            value={etat}
-            onChange={(e) => setEtat(e.target.value)}
-          >
-            <option value="Ouvert">Ouvert</option>
-            <option value="Fermé">Fermé</option>
-          </select>
+          <Select value={etat} onValueChange={setEtat}>
+            <SelectTrigger id="etat" className="border-[#1B7A53] focus:ring-2 focus:ring-[#B4EFC4] rounded-xl w-full bg-white">
+              <SelectValue placeholder="Sélectionnez un état" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Ouvert">Ouvert</SelectItem>
+              <SelectItem value="Fermé">Fermé</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Boutons d'action */}

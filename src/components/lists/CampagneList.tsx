@@ -58,10 +58,16 @@ export default function CampagneList({ onAdd, onEdit }: CampagneListProps) {
   const [deleteTarget, setDeleteTarget] = useState<Record<string, unknown> | null>(null);
   const [etatFilter, setEtatFilter] = useState("all");
 
+  // Fonction utilitaire pour injecter le token JWT
+  const getAuthConfig = () => {
+    const token = localStorage.getItem("access_token");
+    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  };
+
   const fetchCampagnes = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get(API_URL);
+      const res = await axios.get(API_URL, getAuthConfig());
       setCampagnes(Array.isArray(res.data) ? res.data : res.data.results ?? []);
     } catch {
       toast.error("Impossible de charger les campagnes.");
@@ -165,7 +171,7 @@ export default function CampagneList({ onAdd, onEdit }: CampagneListProps) {
           dat_debut: row.dat_debut ?? row.DatDebut ?? new Date().toISOString().slice(0, 10),
           dat_fin: row.dat_fin ?? row.DatFin ?? new Date().toISOString().slice(0, 10),
           etat: row.etat ?? row.Etat ?? "Ouvert",
-        });
+        }, getAuthConfig());
         ok++;
       }
       toast.success(`${ok} campagne(s) importée(s)`);
@@ -178,7 +184,7 @@ export default function CampagneList({ onAdd, onEdit }: CampagneListProps) {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await axios.delete(`${API_URL}${deleteTarget.cod_anne}/`);
+      await axios.delete(`${API_URL}${deleteTarget.cod_anne}/`, getAuthConfig());
       toast.success("Campagne supprimée");
       setDeleteTarget(null);
       fetchCampagnes();
@@ -288,7 +294,7 @@ export default function CampagneList({ onAdd, onEdit }: CampagneListProps) {
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-[#D72638] text-white"
+                        className="bg-[#D72638] text-white hover:bg-[#b52030]"
                         onClick={() => setDeleteTarget(c)}
                       >
                         Supprimer
