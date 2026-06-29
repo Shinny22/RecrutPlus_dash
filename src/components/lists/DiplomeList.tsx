@@ -322,8 +322,8 @@ export default function DiplomeList({ onAdd, onEdit }: DiplomeListProps) {
       )}
 
       {openForm && (
-        <DomaineForm
-          domaine={selected}
+        <DiplomeForm
+          diplome={selected}
           onClose={() => {
             setOpenForm(false);
             fetchDiplomes();
