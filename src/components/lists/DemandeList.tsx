@@ -345,7 +345,6 @@
 // }
 
 
-
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -359,7 +358,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, FileText, Edit3, Trash2, ExternalLink, FileStack } from "lucide-react";
+import { Loader2, FileText, Trash2, ExternalLink, FileStack } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import DataTableToolbar from "../DataTableToolbar";
@@ -708,7 +707,6 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
         </>
       )}
 
-      {/* Composant de consultation intégrée */}
       {selectedView && (
         <DemandeView
           demande={selectedView}
@@ -730,9 +728,6 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
   );
 }
 
-/**
- * Composant interne DemandeView pour la consultation des détails
- */
 function DemandeView({
   demande,
   mediaUrl,
@@ -759,7 +754,8 @@ function DemandeView({
             <strong>Campagne :</strong> {display(demande.campagne)}
           </div>
           <div>
-            <strong>Année d'obtention :</strong> {display(demande.anne_obt_dip)}
+            {/* Correction de l'apostrophe ici pour ESLint */}
+            <strong>Année {"'"}obtention :</strong> {display(demande.anne_obt_dip)}
           </div>
           {demande.dat_dde && (
             <div>
