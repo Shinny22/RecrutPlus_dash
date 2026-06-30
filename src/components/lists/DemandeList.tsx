@@ -344,6 +344,8 @@
 //   );
 // }
 
+
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -356,14 +358,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, FileText, Edit3, Trash2, ExternalLink, FileStack } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import DataTableToolbar from "../DataTableToolbar";
 import PaginationControls from "../PaginationControls";
 import ModuleStatCards from "../ModuleStatCards";
+import ConfirmDelete from "../ConfirmDelete";
 import { useDataTable } from "@/hooks/useDataTable";
 import { API_BASE_URL, API_ENDPOINTS, apiUrl } from "@/lib/api";
+import { display } from "@/lib/api-types";
 import {
   exportToExcel,
   exportToPdf,
@@ -375,7 +380,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export interface Demande {
-  id_dde: number; // Aligné sur le modèle Django
+  id_dde: number;
   cv: string;
   diplome_fichier?: string | null;
   anne_obt_dip: number;
@@ -405,6 +410,8 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
   const [loading, setLoading] = useState(true);
   const [campagneFilter, setCampagneFilter] = useState("");
   const [anneeFilter, setAnneeFilter] = useState("");
+  const [selectedView, setSelectedView] = useState<Demande | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Demande | null>(null);
 
   const getAuthHeaders = useCallback((additionalHeaders = {}) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
@@ -550,11 +557,12 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
     }
   };
 
-  const handleDelete = async (id_dde: number) => {
-    if (!confirm("Supprimer cette demande ?")) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await axios.delete(`${API_URL}${id_dde}/`, getAuthHeaders());
+      await axios.delete(`${API_URL}${deleteTarget.id_dde}/`, getAuthHeaders());
       toast.success("Demande supprimée");
+      setDeleteTarget(null);
       fetchDemandes();
     } catch {
       toast.error("Échec de la suppression");
@@ -563,15 +571,6 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
 
   const mediaUrl = (path: string) =>
     path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <Loader2 className="animate-spin w-8 h-8 text-[#0A5C36]" />
-        <span className="ml-3 text-gray-500">Chargement…</span>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -618,84 +617,194 @@ export default function DemandeList({ onAdd, onEdit }: DemandeListProps) {
         </Button>
       </div>
 
-      <ModuleStatCards items={moduleStats} />
+      <ModuleStatCards items={moduleStats} loading={loading} />
 
-      <div className="rounded-2xl border border-[#E6F4ED] shadow-lg overflow-hidden bg-white">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-[#E7F5EF]">
-              <TableHead className="text-[#0A5C36]">ID</TableHead>
-              <TableHead className="text-[#0A5C36]">Documents</TableHead>
-              <TableHead className="text-[#0A5C36]">Année</TableHead>
-              <TableHead className="text-[#0A5C36]">Candidat</TableHead>
-              <TableHead className="text-[#0A5C36]">Campagne</TableHead>
-              <TableHead className="text-right text-[#0A5C36]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginated.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-gray-500">
-                  Aucune demande trouvée.
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginated.map((d) => (
-                <TableRow key={d.id_dde} className="hover:bg-[#F3F9F5]">
-                  <TableCell className="text-center">{d.id_dde}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <a
-                        href={mediaUrl(d.cv)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center text-blue-600 hover:underline text-xs"
-                      >
-                        <FileText className="w-3 h-3 mr-1" /> CV
-                      </a>
-                      {d.diplome_fichier && (
-                        <a
-                          href={mediaUrl(d.diplome_fichier)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center text-emerald-600 hover:underline text-xs"
-                        >
-                          <ExternalLink className="w-3 h-3 mr-1" /> Diplôme
-                        </a>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{d.anne_obt_dip}</TableCell>
-                  <TableCell className="font-semibold">#{d.candidat}</TableCell>
-                  <TableCell>{d.campagne}</TableCell>
-                  <TableCell className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => onEdit(d)}>
-                      <Edit3 className="w-4 h-4 mr-1" /> Modifier
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="bg-[#D72638] text-white"
-                      onClick={() => handleDelete(d.id_dde)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
+      {loading ? (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="animate-spin w-8 h-8 text-[#0A5C36]" />
+          <span className="ml-3 text-gray-500">Chargement…</span>
+        </div>
+      ) : (
+        <>
+          <div className="rounded-2xl border border-[#E6F4ED] shadow-lg overflow-hidden bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-[#E7F5EF]">
+                  <TableHead className="text-[#0A5C36]">ID</TableHead>
+                  <TableHead className="text-[#0A5C36]">Documents</TableHead>
+                  <TableHead className="text-[#0A5C36]">Année</TableHead>
+                  <TableHead className="text-[#0A5C36]">Candidat</TableHead>
+                  <TableHead className="text-[#0A5C36]">Campagne</TableHead>
+                  <TableHead className="text-right text-[#0A5C36]">Actions</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {paginated.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-10 text-gray-500">
+                      Aucune demande trouvée.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginated.map((d) => (
+                    <TableRow key={d.id_dde} className="hover:bg-[#F3F9F5]">
+                      <TableCell className="text-center">{d.id_dde}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <a
+                            href={mediaUrl(d.cv)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center text-blue-600 hover:underline text-xs"
+                          >
+                            <FileText className="w-3 h-3 mr-1" /> CV
+                          </a>
+                          {d.diplome_fichier && (
+                            <a
+                              href={mediaUrl(d.diplome_fichier)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center text-emerald-600 hover:underline text-xs"
+                            >
+                              <ExternalLink className="w-3 h-3 mr-1" /> Diplôme
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{d.anne_obt_dip}</TableCell>
+                      <TableCell className="font-semibold">{d.candidat}</TableCell>
+                      <TableCell>{d.campagne}</TableCell>
+                      <TableCell className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedView(d)}>
+                          Voir
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => onEdit(d)}>
+                          Modifier
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-[#D72638] text-white hover:bg-[#b52030]"
+                          onClick={() => setDeleteTarget(d)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
-      {filteredCount > 0 && (
-        <PaginationControls
-          page={page}
-          totalPages={totalPages}
-          pageSize={pageSize}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
+          {filteredCount > 0 && (
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          )}
+        </>
+      )}
+
+      {/* Composant de consultation intégrée */}
+      {selectedView && (
+        <DemandeView
+          demande={selectedView}
+          mediaUrl={mediaUrl}
+          onClose={() => setSelectedView(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <ConfirmDelete
+          open={true}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDelete}
+          title="Confirmer la suppression"
+          message={`Supprimer définitivement la demande N° ${deleteTarget.id_dde} ?`}
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Composant interne DemandeView pour la consultation des détails
+ */
+function DemandeView({
+  demande,
+  mediaUrl,
+  onClose,
+}: {
+  demande: Demande;
+  mediaUrl: (path: string) => string;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-md space-y-6 p-6 bg-white rounded-xl shadow-md border border-[#E6F4ED]">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold text-[#0A5C36]">
+            Détails de la Demande N° {demande.id_dde}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-3 text-[#0A5C36]">
+          <div>
+            <strong>ID Candidat :</strong> {display(demande.candidat)}
+          </div>
+          <div>
+            <strong>Campagne :</strong> {display(demande.campagne)}
+          </div>
+          <div>
+            <strong>Année d'obtention :</strong> {display(demande.anne_obt_dip)}
+          </div>
+          {demande.dat_dde && (
+            <div>
+              <strong>Date de demande :</strong> {display(demande.dat_dde)}
+            </div>
+          )}
+          <div>
+            <strong>Statut / État :</strong>{" "}
+            <span className="font-semibold uppercase text-gray-700">
+              {display(demande.etat_dde)}
+            </span>
+          </div>
+          
+          <div className="pt-2 border-t border-gray-100 space-y-2">
+            <strong>Pièces jointes :</strong>
+            <div className="flex flex-col gap-2">
+              <a
+                href={mediaUrl(demande.cv)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center text-blue-600 hover:underline text-sm font-medium"
+              >
+                <FileText className="w-4 h-4 mr-2" /> Consulter le Curriculum Vitae (CV)
+              </a>
+              {demande.diplome_fichier && (
+                <a
+                  href={mediaUrl(demande.diplome_fichier)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center text-emerald-600 hover:underline text-sm font-medium"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" /> Consulter le fichier du Diplôme
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <Button
+          onClick={onClose}
+          className="w-full mt-4 bg-[#0A5C36] text-white hover:bg-[#0C7041] rounded-xl shadow-sm"
+        >
+          Fermer
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 }
